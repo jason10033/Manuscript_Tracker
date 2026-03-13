@@ -19,15 +19,20 @@ async function fetchApi(path, options = {}) {
     headers,
   })
 
+  const data = await res.json()
+
   if (res.status === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('lab_name')
-    localStorage.removeItem('is_admin')
-    window.location.reload()
-    throw new Error('Session expired')
+    // Don't clear session for login/register attempts — just show the error
+    const isAuthRoute = path.startsWith('/auth/login') || path.startsWith('/auth/register')
+    if (!isAuthRoute) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('lab_name')
+      localStorage.removeItem('is_admin')
+      window.location.reload()
+    }
+    throw new Error(data.error || 'Session expired')
   }
 
-  const data = await res.json()
   if (!res.ok) {
     throw new Error(data.error || 'API error')
   }
