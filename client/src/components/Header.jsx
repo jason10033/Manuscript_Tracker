@@ -1,38 +1,66 @@
-export default function Header({ labName, view, onViewChange, onNewManuscript, onLogout, onLabProfile, onAdminDashboard, isAdmin }) {
+export default function Header({ labName, page, view, onViewChange, onNewManuscript, onLogout, onLabProfile, onAdminDashboard, onProtocolGenerator, onHome, isAdmin }) {
+  const isTracker = page === 'tracker'
+  const isProtocol = page === 'protocol-generator'
+
+  const pageTitle = isProtocol ? 'Protocol Generator' : 'Manuscript Tracker'
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
       <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-gray-900">Manuscript Tracker</h1>
+          <h1 className="text-xl font-bold text-gray-900">{pageTitle}</h1>
           <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">{labName}</span>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => onViewChange('kanban')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                view === 'kanban' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Board
-            </button>
-            <button
-              onClick={() => onViewChange('table')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                view === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Table
-            </button>
-          </div>
+          {/* Manuscript-specific controls only shown on tracker page */}
+          {isTracker && (
+            <>
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => onViewChange('kanban')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    view === 'kanban' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Board
+                </button>
+                <button
+                  onClick={() => onViewChange('table')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    view === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Table
+                </button>
+              </div>
 
-          <button
-            onClick={onNewManuscript}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            + New Manuscript
-          </button>
+              <button
+                onClick={onNewManuscript}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                + New Manuscript
+              </button>
+            </>
+          )}
+
+          {/* Tool switcher buttons */}
+          {!isTracker && (
+            <button
+              onClick={onHome}
+              className="text-sm px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium"
+            >
+              Manuscripts
+            </button>
+          )}
+          {!isProtocol && (
+            <button
+              onClick={onProtocolGenerator}
+              className="text-sm px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors font-medium"
+            >
+              Protocols
+            </button>
+          )}
 
           {isAdmin && (
             <button

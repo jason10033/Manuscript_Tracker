@@ -44,9 +44,12 @@ async function initApp() {
     const manuscriptRoutes = require('./routes/manuscripts');
     const adminRoutes = require('./routes/admin');
 
+    const protocolRoutes = require('./routes/protocols');
+
     app.use('/api/auth', authRoutes);
     app.use('/api/manuscripts', manuscriptRoutes);
     app.use('/api/admin', adminRoutes);
+    app.use('/api/protocols', protocolRoutes);
     console.log('[BOOT] All routes loaded');
     bootStatus = 'routes_ready';
 

@@ -84,9 +84,41 @@ async function getDb() {
     )
   `);
 
+  // Protocols table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS protocols (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lab_id INTEGER NOT NULL,
+      title TEXT NOT NULL DEFAULT 'Untitled Protocol',
+      protocol_type TEXT NOT NULL,
+      status TEXT DEFAULT 'draft',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (lab_id) REFERENCES labs(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Protocol sections table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS protocol_sections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      protocol_id INTEGER NOT NULL,
+      section_key TEXT NOT NULL,
+      section_title TEXT NOT NULL,
+      section_order INTEGER NOT NULL,
+      guideline_text TEXT DEFAULT '',
+      content TEXT DEFAULT '',
+      status TEXT DEFAULT 'not_started',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (protocol_id) REFERENCES protocols(id) ON DELETE CASCADE
+    )
+  `);
+
   db.run('CREATE INDEX IF NOT EXISTS idx_manuscripts_lab ON manuscripts(lab_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_events_manuscript ON status_events(manuscript_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_lab_members_lab ON lab_members(lab_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_protocols_lab ON protocols(lab_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_protocol_sections_protocol ON protocol_sections(protocol_id)');
 
   saveDb();
   return db;
@@ -119,8 +151,9 @@ function queryOne(sql, params = []) {
 
 function runSql(sql, params = []) {
   db.run(sql, params);
+  const lastInsertRowid = db.exec("SELECT last_insert_rowid()")[0]?.values[0][0];
   saveDb();
-  return { lastInsertRowid: db.exec("SELECT last_insert_rowid()")[0]?.values[0][0] };
+  return { lastInsertRowid };
 }
 
 module.exports = { getDb, saveDb, queryAll, queryOne, runSql };

@@ -3,6 +3,7 @@ import { authApi } from '../lib/api'
 
 const TOOLS = [
   {
+    toolId: 'tracker',
     name: 'Manuscript Tracker',
     description: 'Track your publication pipeline from idea to acceptance',
     icon: (
@@ -13,8 +14,10 @@ const TOOLS = [
     active: true,
     color: 'bg-blue-50 border-blue-200 hover:border-blue-400 hover:shadow-lg',
     iconColor: 'text-blue-600',
+    openLabel: 'Open Tracker',
   },
   {
+    toolId: 'grants-tracker',
     name: 'Grants Tracker',
     description: 'Track grant applications, deadlines, and funding',
     icon: (
@@ -27,6 +30,7 @@ const TOOLS = [
     iconColor: 'text-gray-400',
   },
   {
+    toolId: 'budget-tracker',
     name: 'Budget Tracker',
     description: 'Monitor lab spending and budget allocations',
     icon: (
@@ -39,20 +43,22 @@ const TOOLS = [
     iconColor: 'text-gray-400',
   },
   {
-    name: 'Lab Meeting Tracker',
-    description: 'Schedule and track lab meeting presentations',
+    toolId: 'protocol-generator',
+    name: 'Protocol Generator',
+    description: 'Create research protocols guided by EQUATOR reporting guidelines',
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
       </svg>
     ),
-    active: false,
-    color: 'bg-gray-50 border-gray-200',
-    iconColor: 'text-gray-400',
+    active: true,
+    color: 'bg-emerald-50 border-emerald-200 hover:border-emerald-400 hover:shadow-lg',
+    iconColor: 'text-emerald-600',
+    openLabel: 'Open Generator',
   },
 ]
 
-export default function LandingPage({ onLogin }) {
+export default function LandingPage({ onLogin, onToolSelect }) {
   const [isRegister, setIsRegister] = useState(false)
   const [isAdminRegister, setIsAdminRegister] = useState(false)
   const [labName, setLabName] = useState('')
@@ -60,6 +66,7 @@ export default function LandingPage({ onLogin }) {
   const [adminSecret, setAdminSecret] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [pendingTool, setPendingTool] = useState(null)
 
   // Check for existing session
   const existingToken = localStorage.getItem('token')
@@ -80,6 +87,10 @@ export default function LandingPage({ onLogin }) {
         data = await authApi.login(labName, password)
       }
       onLogin(data.token, data.lab_name, !!data.is_admin)
+      // Navigate to the pending tool if one was selected before login
+      if (pendingTool && onToolSelect) {
+        onToolSelect(pendingTool)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -87,9 +98,15 @@ export default function LandingPage({ onLogin }) {
     }
   }
 
-  const handleOpenTracker = () => {
+  const handleToolClick = (tool) => {
+    if (!tool.active) return
     if (existingToken && existingLabName) {
+      // Already logged in — restore session and navigate to tool
       onLogin(existingToken, existingLabName, existingIsAdmin)
+      if (onToolSelect) onToolSelect(tool.toolId)
+    } else {
+      // Not logged in — remember which tool they want, they'll log in first
+      setPendingTool(tool.toolId)
     }
   }
 
@@ -97,7 +114,7 @@ export default function LandingPage({ onLogin }) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
       <header className="pt-12 pb-8 text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">ResearchLabTools</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Clinical Research Lab Tools</h1>
         <p className="text-lg text-gray-500">Everything your lab needs, in one place</p>
         {existingToken && existingLabName && (
           <p className="mt-3 text-sm text-blue-600">
@@ -111,8 +128,8 @@ export default function LandingPage({ onLogin }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {TOOLS.map((tool) => (
             <div
-              key={tool.name}
-              onClick={tool.active ? (existingToken ? handleOpenTracker : undefined) : undefined}
+              key={tool.toolId}
+              onClick={() => handleToolClick(tool)}
               className={`relative rounded-xl border-2 p-6 transition-all ${tool.color} ${
                 tool.active ? 'cursor-pointer' : 'cursor-default opacity-70'
               }`}
@@ -131,8 +148,12 @@ export default function LandingPage({ onLogin }) {
               </p>
               {tool.active && existingToken && (
                 <div className="mt-3">
-                  <span className="text-sm font-medium text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
-                    Open Tracker &rarr;
+                  <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                    tool.toolId === 'tracker'
+                      ? 'text-blue-600 bg-blue-100'
+                      : 'text-emerald-600 bg-emerald-100'
+                  }`}>
+                    {tool.openLabel || 'Open'} &rarr;
                   </span>
                 </div>
               )}

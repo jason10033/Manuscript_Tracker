@@ -9,13 +9,14 @@ import StatusChangeModal from './components/StatusChangeModal'
 import NewManuscriptModal from './components/NewManuscriptModal'
 import LabProfile from './components/LabProfile'
 import AdminDashboard from './components/AdminDashboard'
+import ProtocolGenerator from './components/ProtocolGenerator'
 import { manuscriptApi } from './lib/api'
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [labName, setLabName] = useState(localStorage.getItem('lab_name') || '')
   const [isAdmin, setIsAdmin] = useState(localStorage.getItem('is_admin') === '1')
-  const [page, setPage] = useState('tracker') // 'tracker' | 'lab-profile' | 'admin-dashboard'
+  const [page, setPage] = useState('tracker') // 'tracker' | 'lab-profile' | 'admin-dashboard' | 'protocol-generator'
   const [manuscripts, setManuscripts] = useState([])
   const [view, setView] = useState('kanban')
   const [selectedManuscript, setSelectedManuscript] = useState(null)
@@ -30,7 +31,19 @@ export default function App() {
     setToken(tokenVal)
     setLabName(labNameVal)
     setIsAdmin(isAdminVal)
-    setPage('tracker')
+    // Don't override page if it was already set by tool selection
+    if (page !== 'protocol-generator') {
+      setPage('tracker')
+    }
+  }
+
+  const handleToolSelect = (toolId) => {
+    const toolPageMap = {
+      'tracker': 'tracker',
+      'protocol-generator': 'protocol-generator',
+    }
+    const targetPage = toolPageMap[toolId]
+    if (targetPage) setPage(targetPage)
   }
 
   const handleLogout = () => {
@@ -114,7 +127,7 @@ export default function App() {
   }
 
   if (!token) {
-    return <LandingPage onLogin={handleLogin} />
+    return <LandingPage onLogin={handleLogin} onToolSelect={handleToolSelect} />
   }
 
   // Lab Profile page
@@ -123,12 +136,15 @@ export default function App() {
       <div className="min-h-screen bg-gray-50">
         <Header
           labName={labName}
+          page={page}
           view={view}
           onViewChange={(v) => { setView(v); setPage('tracker') }}
           onNewManuscript={() => { setShowNewModal(true); setPage('tracker') }}
           onLogout={handleLogout}
           onLabProfile={() => setPage('lab-profile')}
           onAdminDashboard={() => setPage('admin-dashboard')}
+          onProtocolGenerator={() => setPage('protocol-generator')}
+          onHome={() => setPage('tracker')}
           isAdmin={isAdmin}
         />
         <LabProfile onBack={() => setPage('tracker')} />
@@ -142,15 +158,40 @@ export default function App() {
       <div className="min-h-screen bg-gray-50">
         <Header
           labName={labName}
+          page={page}
           view={view}
           onViewChange={(v) => { setView(v); setPage('tracker') }}
           onNewManuscript={() => { setShowNewModal(true); setPage('tracker') }}
           onLogout={handleLogout}
           onLabProfile={() => setPage('lab-profile')}
           onAdminDashboard={() => setPage('admin-dashboard')}
+          onProtocolGenerator={() => setPage('protocol-generator')}
+          onHome={() => setPage('tracker')}
           isAdmin={isAdmin}
         />
         <AdminDashboard onBack={() => setPage('tracker')} />
+      </div>
+    )
+  }
+
+  // Protocol Generator
+  if (page === 'protocol-generator') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header
+          labName={labName}
+          page={page}
+          view={view}
+          onViewChange={(v) => { setView(v); setPage('tracker') }}
+          onNewManuscript={() => { setShowNewModal(true); setPage('tracker') }}
+          onLogout={handleLogout}
+          onLabProfile={() => setPage('lab-profile')}
+          onAdminDashboard={() => setPage('admin-dashboard')}
+          onProtocolGenerator={() => setPage('protocol-generator')}
+          onHome={() => setPage('tracker')}
+          isAdmin={isAdmin}
+        />
+        <ProtocolGenerator onBack={() => setPage('tracker')} />
       </div>
     )
   }
@@ -159,12 +200,15 @@ export default function App() {
     <div className="min-h-screen bg-gray-50">
       <Header
         labName={labName}
+        page={page}
         view={view}
         onViewChange={setView}
         onNewManuscript={() => setShowNewModal(true)}
         onLogout={handleLogout}
         onLabProfile={() => setPage('lab-profile')}
         onAdminDashboard={() => setPage('admin-dashboard')}
+        onProtocolGenerator={() => setPage('protocol-generator')}
+        onHome={() => setPage('tracker')}
         isAdmin={isAdmin}
       />
 

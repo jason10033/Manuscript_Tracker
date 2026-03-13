@@ -74,6 +74,32 @@ export const manuscriptApi = {
   stats: () => fetchApi('/manuscripts/stats/summary'),
 }
 
+// Protocols
+export const protocolApi = {
+  list: () => fetchApi('/protocols'),
+  get: (id) => fetchApi(`/protocols/${id}`),
+  create: (data) =>
+    fetchApi('/protocols', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) =>
+    fetchApi(`/protocols/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) =>
+    fetchApi(`/protocols/${id}`, { method: 'DELETE' }),
+  updateSection: (protocolId, sectionId, data) =>
+    fetchApi(`/protocols/${protocolId}/sections/${sectionId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  generateSection: (protocolId, sectionId, data) =>
+    fetchApi(`/protocols/${protocolId}/sections/${sectionId}/generate`, { method: 'POST', body: JSON.stringify(data) }),
+  getTypes: () => fetchApi('/protocols/types/list'),
+  export: (id) => {
+    const token = getToken()
+    return fetch(`${API_BASE}/protocols/${id}/export`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((res) => {
+      if (!res.ok) throw new Error('Export failed')
+      return res.blob()
+    })
+  },
+}
+
 // Admin
 export const adminApi = {
   getLabs: () => fetchApi('/admin/labs'),
