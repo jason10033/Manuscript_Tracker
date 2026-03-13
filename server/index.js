@@ -10,7 +10,9 @@ app.use(cors());
 app.use(express.json());
 
 async function start() {
+  console.log('Initializing database...');
   await getDb();
+  console.log('Database initialized successfully');
 
   const authRoutes = require('./routes/auth');
   const manuscriptRoutes = require('./routes/manuscripts');
@@ -19,6 +21,11 @@ async function start() {
   app.use('/api/auth', authRoutes);
   app.use('/api/manuscripts', manuscriptRoutes);
   app.use('/api/admin', adminRoutes);
+
+  // Health check endpoint
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', time: new Date().toISOString() });
+  });
 
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
