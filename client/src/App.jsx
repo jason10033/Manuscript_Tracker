@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import LoginPage from './components/LoginPage'
+import LandingPage from './components/LandingPage'
 import Header from './components/Header'
 import DashboardStats from './components/DashboardStats'
 import KanbanBoard from './components/KanbanBoard'
@@ -7,32 +7,40 @@ import TableView from './components/TableView'
 import ManuscriptDetail from './components/ManuscriptDetail'
 import StatusChangeModal from './components/StatusChangeModal'
 import NewManuscriptModal from './components/NewManuscriptModal'
-import SettingsModal from './components/SettingsModal'
+import LabProfile from './components/LabProfile'
+import AdminDashboard from './components/AdminDashboard'
 import { manuscriptApi } from './lib/api'
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [labName, setLabName] = useState(localStorage.getItem('lab_name') || '')
+  const [isAdmin, setIsAdmin] = useState(localStorage.getItem('is_admin') === '1')
+  const [page, setPage] = useState('tracker') // 'tracker' | 'lab-profile' | 'admin-dashboard'
   const [manuscripts, setManuscripts] = useState([])
   const [view, setView] = useState('kanban')
   const [selectedManuscript, setSelectedManuscript] = useState(null)
   const [statusChangeData, setStatusChangeData] = useState(null)
   const [showNewModal, setShowNewModal] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = (tokenVal, labNameVal) => {
+  const handleLogin = (tokenVal, labNameVal, isAdminVal = false) => {
     localStorage.setItem('token', tokenVal)
     localStorage.setItem('lab_name', labNameVal)
+    localStorage.setItem('is_admin', isAdminVal ? '1' : '0')
     setToken(tokenVal)
     setLabName(labNameVal)
+    setIsAdmin(isAdminVal)
+    setPage('tracker')
   }
 
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('lab_name')
+    localStorage.removeItem('is_admin')
     setToken(null)
     setLabName('')
+    setIsAdmin(false)
+    setPage('tracker')
   }
 
   const loadManuscripts = useCallback(async () => {
@@ -106,7 +114,45 @@ export default function App() {
   }
 
   if (!token) {
-    return <LoginPage onLogin={handleLogin} />
+    return <LandingPage onLogin={handleLogin} />
+  }
+
+  // Lab Profile page
+  if (page === 'lab-profile') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header
+          labName={labName}
+          view={view}
+          onViewChange={(v) => { setView(v); setPage('tracker') }}
+          onNewManuscript={() => { setShowNewModal(true); setPage('tracker') }}
+          onLogout={handleLogout}
+          onLabProfile={() => setPage('lab-profile')}
+          onAdminDashboard={() => setPage('admin-dashboard')}
+          isAdmin={isAdmin}
+        />
+        <LabProfile onBack={() => setPage('tracker')} />
+      </div>
+    )
+  }
+
+  // Admin Dashboard
+  if (page === 'admin-dashboard' && isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header
+          labName={labName}
+          view={view}
+          onViewChange={(v) => { setView(v); setPage('tracker') }}
+          onNewManuscript={() => { setShowNewModal(true); setPage('tracker') }}
+          onLogout={handleLogout}
+          onLabProfile={() => setPage('lab-profile')}
+          onAdminDashboard={() => setPage('admin-dashboard')}
+          isAdmin={isAdmin}
+        />
+        <AdminDashboard onBack={() => setPage('tracker')} />
+      </div>
+    )
   }
 
   return (
@@ -117,7 +163,9 @@ export default function App() {
         onViewChange={setView}
         onNewManuscript={() => setShowNewModal(true)}
         onLogout={handleLogout}
-        onSettings={() => setShowSettings(true)}
+        onLabProfile={() => setPage('lab-profile')}
+        onAdminDashboard={() => setPage('admin-dashboard')}
+        isAdmin={isAdmin}
       />
 
       <main className="max-w-[1600px] mx-auto px-4 py-6">
@@ -164,10 +212,6 @@ export default function App() {
           onSubmit={handleCreateManuscript}
           onClose={() => setShowNewModal(false)}
         />
-      )}
-
-      {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
     </div>
   )

@@ -14,9 +14,11 @@ async function start() {
 
   const authRoutes = require('./routes/auth');
   const manuscriptRoutes = require('./routes/manuscripts');
+  const adminRoutes = require('./routes/admin');
 
   app.use('/api/auth', authRoutes);
   app.use('/api/manuscripts', manuscriptRoutes);
+  app.use('/api/admin', adminRoutes);
 
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));

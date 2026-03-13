@@ -59,8 +59,34 @@ async function getDb() {
     )
   `);
 
+  // Migrations — add new columns to labs (idempotent via try/catch)
+  const labMigrations = [
+    "ALTER TABLE labs ADD COLUMN pi_name TEXT DEFAULT ''",
+    "ALTER TABLE labs ADD COLUMN institution TEXT DEFAULT ''",
+    "ALTER TABLE labs ADD COLUMN department TEXT DEFAULT ''",
+    "ALTER TABLE labs ADD COLUMN website_url TEXT DEFAULT ''",
+    "ALTER TABLE labs ADD COLUMN is_admin INTEGER DEFAULT 0",
+  ];
+  for (const sql of labMigrations) {
+    try { db.run(sql); } catch (e) { /* column already exists */ }
+  }
+
+  // Lab members table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS lab_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lab_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT DEFAULT '',
+      email TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (lab_id) REFERENCES labs(id) ON DELETE CASCADE
+    )
+  `);
+
   db.run('CREATE INDEX IF NOT EXISTS idx_manuscripts_lab ON manuscripts(lab_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_events_manuscript ON status_events(manuscript_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_lab_members_lab ON lab_members(lab_id)');
 
   saveDb();
   return db;
