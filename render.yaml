@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: manuscript-tracker
+    runtime: node
+    plan: free
+    buildCommand: cd server && npm install && cd ../client && npm install && npm run build
+    startCommand: cd server && NODE_ENV=production node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RENDER_DISK_PATH
+        value: /data
+    disk:
+      name: manuscript-data
+      mountPath: /data
+      sizeGB: 1

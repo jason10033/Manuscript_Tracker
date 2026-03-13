@@ -2,7 +2,9 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const dbPath = path.join(__dirname, '..', 'data', 'manuscripts.db');
+// Use RENDER_DISK_PATH if available (persistent disk on Render), otherwise local data/ dir
+const dbDir = process.env.RENDER_DISK_PATH || path.join(__dirname, '..', 'data');
+const dbPath = path.join(dbDir, 'manuscripts.db');
 
 let db;
 
