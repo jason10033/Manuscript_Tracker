@@ -5,6 +5,52 @@ const { authMiddleware } = require('../middleware/auth');
 const router = express.Router();
 router.use(authMiddleware);
 
+// Dashboard stats — MUST be before /:id to avoid matching "stats" as an id
+router.get('/stats/summary', (req, res) => {
+  const statusCounts = queryAll(
+    'SELECT current_status, COUNT(*) as count FROM manuscripts WHERE lab_id = ? GROUP BY current_status',
+    [req.labId]
+  );
+
+  const lab = queryOne('SELECT stale_threshold_days FROM labs WHERE id = ?', [req.labId]);
+  const threshold = lab?.stale_threshold_days || 30;
+
+  const staleManuscripts = queryAll(
+    `SELECT *, CAST((julianday('now') - julianday(updated_at)) AS INTEGER) as days_in_stage
+     FROM manuscripts
+     WHERE lab_id = ?
+       AND current_status NOT IN ('ACCEPTED', 'REJECTED')
+       AND CAST((julianday('now') - julianday(updated_at)) AS INTEGER) >= ?
+     ORDER BY days_in_stage DESC`,
+    [req.labId, threshold]
+  );
+
+  const totalManuscripts = queryOne(
+    'SELECT COUNT(*) as count FROM manuscripts WHERE lab_id = ?',
+    [req.labId]
+  );
+
+  const avgDaysPerStatus = queryAll(
+    `SELECT e.status,
+      ROUND(AVG(CAST((julianday(COALESCE(next_e.date, datetime('now'))) - julianday(e.date)) AS REAL)), 1) as avg_days
+    FROM status_events e
+    JOIN manuscripts m ON e.manuscript_id = m.id
+    LEFT JOIN status_events next_e ON next_e.manuscript_id = e.manuscript_id
+      AND next_e.id = (SELECT MIN(id) FROM status_events WHERE manuscript_id = e.manuscript_id AND id > e.id)
+    WHERE m.lab_id = ?
+    GROUP BY e.status`,
+    [req.labId]
+  );
+
+  res.json({
+    statusCounts,
+    staleManuscripts,
+    totalManuscripts: totalManuscripts?.count || 0,
+    avgDaysPerStatus,
+    staleThreshold: threshold
+  });
+});
+
 // List all manuscripts for this lab
 router.get('/', (req, res) => {
   const manuscripts = queryAll(
@@ -12,7 +58,6 @@ router.get('/', (req, res) => {
     [req.labId]
   );
 
-  // Attach events to each manuscript
   manuscripts.forEach(m => {
     m.events = queryAll(
       'SELECT * FROM status_events WHERE manuscript_id = ? ORDER BY date ASC, id ASC',
@@ -41,13 +86,13 @@ router.get('/:id', (req, res) => {
 
 // Create manuscript
 router.post('/', (req, res) => {
-  const { title, authors, contact_person, contact_email, current_status } = req.body;
+  const { title, authors, contact_person, current_status } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
 
   const status = current_status || 'IDEA';
   const result = runSql(
-    'INSERT INTO manuscripts (lab_id, title, authors, contact_person, contact_email, current_status) VALUES (?, ?, ?, ?, ?, ?)',
-    [req.labId, title, authors || '', contact_person || '', contact_email || '', status]
+    'INSERT INTO manuscripts (lab_id, title, authors, contact_person, current_status) VALUES (?, ?, ?, ?, ?)',
+    [req.labId, title, authors || '', contact_person || '', status]
   );
 
   runSql(
@@ -68,10 +113,10 @@ router.put('/:id', (req, res) => {
   );
   if (!manuscript) return res.status(404).json({ error: 'Manuscript not found' });
 
-  const { title, authors, contact_person, contact_email } = req.body;
+  const { title, authors, contact_person } = req.body;
   runSql(
-    'UPDATE manuscripts SET title = COALESCE(?, title), authors = COALESCE(?, authors), contact_person = COALESCE(?, contact_person), contact_email = COALESCE(?, contact_email), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [title, authors, contact_person, contact_email, req.params.id]
+    'UPDATE manuscripts SET title = COALESCE(?, title), authors = COALESCE(?, authors), contact_person = COALESCE(?, contact_person), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [title, authors, contact_person, req.params.id]
   );
 
   const updated = queryOne('SELECT * FROM manuscripts WHERE id = ?', [req.params.id]);
@@ -127,52 +172,6 @@ router.post('/:id/events', (req, res) => {
     [req.params.id]
   );
   res.status(201).json(updated);
-});
-
-// Dashboard stats
-router.get('/stats/summary', (req, res) => {
-  const statusCounts = queryAll(
-    'SELECT current_status, COUNT(*) as count FROM manuscripts WHERE lab_id = ? GROUP BY current_status',
-    [req.labId]
-  );
-
-  const lab = queryOne('SELECT stale_threshold_days FROM labs WHERE id = ?', [req.labId]);
-  const threshold = lab?.stale_threshold_days || 30;
-
-  const staleManuscripts = queryAll(
-    `SELECT *, CAST((julianday('now') - julianday(updated_at)) AS INTEGER) as days_in_stage
-     FROM manuscripts
-     WHERE lab_id = ?
-       AND current_status NOT IN ('ACCEPTED', 'REJECTED')
-       AND CAST((julianday('now') - julianday(updated_at)) AS INTEGER) >= ?
-     ORDER BY days_in_stage DESC`,
-    [req.labId, threshold]
-  );
-
-  const totalManuscripts = queryOne(
-    'SELECT COUNT(*) as count FROM manuscripts WHERE lab_id = ?',
-    [req.labId]
-  );
-
-  const avgDaysPerStatus = queryAll(
-    `SELECT e.status,
-      ROUND(AVG(CAST((julianday(COALESCE(next_e.date, datetime('now'))) - julianday(e.date)) AS REAL)), 1) as avg_days
-    FROM status_events e
-    JOIN manuscripts m ON e.manuscript_id = m.id
-    LEFT JOIN status_events next_e ON next_e.manuscript_id = e.manuscript_id
-      AND next_e.id = (SELECT MIN(id) FROM status_events WHERE manuscript_id = e.manuscript_id AND id > e.id)
-    WHERE m.lab_id = ?
-    GROUP BY e.status`,
-    [req.labId]
-  );
-
-  res.json({
-    statusCounts,
-    staleManuscripts,
-    totalManuscripts: totalManuscripts?.count || 0,
-    avgDaysPerStatus,
-    staleThreshold: threshold
-  });
 });
 
 module.exports = router;

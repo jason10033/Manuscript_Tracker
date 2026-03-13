@@ -5,7 +5,6 @@ export default function NewManuscriptModal({ onSubmit, onClose }) {
   const [title, setTitle] = useState('')
   const [authors, setAuthors] = useState('')
   const [contactPerson, setContactPerson] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
   const [status, setStatus] = useState('IDEA')
   const [loading, setLoading] = useState(false)
 
@@ -17,7 +16,6 @@ export default function NewManuscriptModal({ onSubmit, onClose }) {
         title,
         authors,
         contact_person: contactPerson,
-        contact_email: contactEmail,
         current_status: status,
       })
     } finally {
@@ -63,17 +61,6 @@ export default function NewManuscriptModal({ onSubmit, onClose }) {
                 onChange={(e) => setContactPerson(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="Person responsible for this manuscript"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
-              <input
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                placeholder="contact@email.com"
               />
             </div>
 
