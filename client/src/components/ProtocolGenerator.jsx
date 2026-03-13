@@ -110,6 +110,14 @@ export default function ProtocolGenerator({ onBack }) {
               ? Math.round((protocol.completedSections / protocol.totalSections) * 100)
               : 0
 
+            const isInput = protocol.phase === 'input'
+            const progressLabel = isInput
+              ? `${protocol.notesFilledCount || 0}/${protocol.totalSections} notes`
+              : `${protocol.completedSections}/${protocol.totalSections} sections`
+            const progressPct = isInput
+              ? (protocol.totalSections ? Math.round(((protocol.notesFilledCount || 0) / protocol.totalSections) * 100) : 0)
+              : progress
+
             return (
               <div
                 key={protocol.id}
@@ -124,6 +132,15 @@ export default function ProtocolGenerator({ onBack }) {
                         {protocol.typeLabel}
                       </span>
                       <span className="text-xs text-gray-400">{protocol.guideline}</span>
+                      {protocol.phase === 'input' ? (
+                        <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                          Input Phase
+                        </span>
+                      ) : protocol.phase === 'generated' ? (
+                        <span className="text-xs font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          Generated
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <button
@@ -140,13 +157,13 @@ export default function ProtocolGenerator({ onBack }) {
                 {/* Progress */}
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>{protocol.completedSections}/{protocol.totalSections} sections</span>
-                    <span>{progress}%</span>
+                    <span>{progressLabel}</span>
+                    <span>{progressPct}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
                     <div
-                      className="bg-emerald-500 h-1.5 rounded-full transition-all"
-                      style={{ width: `${progress}%` }}
+                      className={`${isInput ? 'bg-amber-500' : 'bg-emerald-500'} h-1.5 rounded-full transition-all`}
+                      style={{ width: `${progressPct}%` }}
                     />
                   </div>
                 </div>

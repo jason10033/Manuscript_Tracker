@@ -120,6 +120,16 @@ async function getDb() {
   db.run('CREATE INDEX IF NOT EXISTS idx_protocols_lab ON protocols(lab_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_protocol_sections_protocol ON protocol_sections(protocol_id)');
 
+  // Protocol migrations — add wizard/revision columns
+  const protocolMigrations = [
+    "ALTER TABLE protocol_sections ADD COLUMN user_notes TEXT DEFAULT ''",
+    "ALTER TABLE protocols ADD COLUMN phase TEXT DEFAULT 'input'",
+    "ALTER TABLE protocols ADD COLUMN revisions_remaining INTEGER DEFAULT 3",
+  ];
+  for (const sql of protocolMigrations) {
+    try { db.run(sql); } catch (e) { /* column already exists */ }
+  }
+
   saveDb();
   return db;
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { protocolApi } from '../lib/api'
 import ProtocolSection from './ProtocolSection'
+import ProtocolWizard from './ProtocolWizard'
 
 export default function ProtocolEditor({ protocolId, onBack }) {
   const [protocol, setProtocol] = useState(null)
@@ -10,6 +11,12 @@ export default function ProtocolEditor({ protocolId, onBack }) {
   const [titleValue, setTitleValue] = useState('')
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
+
+  // Revision state
+  const [showRevisionPanel, setShowRevisionPanel] = useState(false)
+  const [revisionFeedback, setRevisionFeedback] = useState('')
+  const [revising, setRevising] = useState(false)
+  const [revisionError, setRevisionError] = useState('')
 
   useEffect(() => {
     loadProtocol()
@@ -34,11 +41,6 @@ export default function ProtocolEditor({ protocolId, onBack }) {
   const handleUpdateSection = async (sectionId, data) => {
     await protocolApi.updateSection(protocolId, sectionId, data)
     await loadProtocol()
-  }
-
-  const handleGenerateSection = async (sectionId, additionalContext) => {
-    const result = await protocolApi.generateSection(protocolId, sectionId, { additionalContext })
-    return result
   }
 
   const handleTitleSave = async () => {
@@ -68,6 +70,27 @@ export default function ProtocolEditor({ protocolId, onBack }) {
     }
   }
 
+  const handleRevise = async () => {
+    if (!revisionFeedback.trim()) return
+    setRevising(true)
+    setRevisionError('')
+    try {
+      await protocolApi.revise(protocolId, revisionFeedback.trim())
+      setRevisionFeedback('')
+      setShowRevisionPanel(false)
+      await loadProtocol()
+    } catch (err) {
+      setRevisionError(err.message)
+    } finally {
+      setRevising(false)
+    }
+  }
+
+  const handleBackToInput = async () => {
+    await protocolApi.update(protocolId, { phase: 'input' })
+    await loadProtocol()
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -87,9 +110,22 @@ export default function ProtocolEditor({ protocolId, onBack }) {
     )
   }
 
+  // If in input phase, show the wizard
+  if (protocol.phase === 'input') {
+    return (
+      <ProtocolWizard
+        protocol={protocol}
+        onGenerated={loadProtocol}
+        onBack={onBack}
+      />
+    )
+  }
+
+  // Generated/review phase — show the editor
   const sections = protocol.sections || []
   const activeSection = sections.find((s) => s.id === activeSectionId)
   const completedCount = sections.filter((s) => s.status === 'complete').length
+  const revisionsRemaining = protocol.revisions_remaining ?? 0
 
   const statusDot = (status) => {
     const colors = {
@@ -136,8 +172,8 @@ export default function ProtocolEditor({ protocolId, onBack }) {
           )}
 
           <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-              {protocol.typeLabel}
+            <span className="text-xs font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+              Generated
             </span>
             <span className="text-xs text-gray-400">
               {protocol.guideline}
@@ -180,8 +216,35 @@ export default function ProtocolEditor({ protocolId, onBack }) {
           ))}
         </div>
 
-        {/* Export Button */}
-        <div className="p-4 border-t border-gray-200">
+        {/* Bottom Actions */}
+        <div className="p-4 border-t border-gray-200 space-y-2">
+          {/* Revise with AI */}
+          <button
+            onClick={() => setShowRevisionPanel(!showRevisionPanel)}
+            disabled={revisionsRemaining <= 0}
+            className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              revisionsRemaining > 0
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {revisionsRemaining > 0
+              ? `Revise with AI (${revisionsRemaining} left)`
+              : 'No revisions remaining'}
+          </button>
+
+          {/* Back to Input */}
+          <button
+            onClick={handleBackToInput}
+            className="w-full px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Back to Input Phase
+          </button>
+
+          {/* Export */}
           <button
             onClick={handleExport}
             disabled={exporting}
@@ -197,13 +260,58 @@ export default function ProtocolEditor({ protocolId, onBack }) {
 
       {/* Right — Section Editor */}
       <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+        {/* Revision Panel */}
+        {showRevisionPanel && (
+          <div className="max-w-3xl mx-auto mb-6">
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-purple-900 mb-2">
+                Revise with AI ({revisionsRemaining} revision{revisionsRemaining !== 1 ? 's' : ''} remaining)
+              </h3>
+              <p className="text-xs text-purple-700 mb-3">
+                Describe what changes you'd like across the protocol. The AI will revise all sections based on your feedback.
+              </p>
+              <textarea
+                value={revisionFeedback}
+                onChange={(e) => setRevisionFeedback(e.target.value)}
+                placeholder="e.g., Make the statistical methods section more detailed, add more about blinding procedures, expand the sample size justification..."
+                className="w-full p-3 border border-purple-200 rounded-lg text-sm resize-none h-24 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+              {revisionError && (
+                <div className="mt-2 text-sm text-red-600 bg-red-50 rounded p-2">{revisionError}</div>
+              )}
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={handleRevise}
+                  disabled={revising || !revisionFeedback.trim()}
+                  className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50"
+                >
+                  {revising ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Revising...
+                    </span>
+                  ) : 'Apply Revision'}
+                </button>
+                <button
+                  onClick={() => { setShowRevisionPanel(false); setRevisionFeedback(''); setRevisionError('') }}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSection ? (
           <ProtocolSection
             key={activeSection.id}
             section={activeSection}
             protocolId={protocolId}
             onUpdate={handleUpdateSection}
-            onGenerate={handleGenerateSection}
           />
         ) : (
           <div className="text-center py-20 text-gray-500">
@@ -211,6 +319,20 @@ export default function ProtocolEditor({ protocolId, onBack }) {
           </div>
         )}
       </div>
+
+      {/* Revising overlay */}
+      {revising && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 max-w-sm mx-4 text-center">
+            <svg className="w-12 h-12 animate-spin mx-auto text-purple-600 mb-4" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Revising Protocol</h3>
+            <p className="text-sm text-gray-500">Applying your feedback to all sections...</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

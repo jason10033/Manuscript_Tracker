@@ -86,8 +86,24 @@ export const protocolApi = {
     fetchApi(`/protocols/${id}`, { method: 'DELETE' }),
   updateSection: (protocolId, sectionId, data) =>
     fetchApi(`/protocols/${protocolId}/sections/${sectionId}`, { method: 'PUT', body: JSON.stringify(data) }),
-  generateSection: (protocolId, sectionId, data) =>
-    fetchApi(`/protocols/${protocolId}/sections/${sectionId}/generate`, { method: 'POST', body: JSON.stringify(data) }),
+  generateFull: (protocolId) =>
+    fetchApi(`/protocols/${protocolId}/generate`, { method: 'POST' }),
+  revise: (protocolId, feedback) =>
+    fetchApi(`/protocols/${protocolId}/revise`, { method: 'POST', body: JSON.stringify({ feedback }) }),
+  importDoc: (protocolId, file) => {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('file', file)
+    return fetch(`${API_BASE}/protocols/${protocolId}/import`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(async (res) => {
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Import failed')
+      return data
+    })
+  },
   getTypes: () => fetchApi('/protocols/types/list'),
   export: (id) => {
     const token = getToken()

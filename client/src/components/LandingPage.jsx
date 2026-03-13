@@ -30,19 +30,6 @@ const TOOLS = [
     iconColor: 'text-gray-400',
   },
   {
-    toolId: 'budget-tracker',
-    name: 'Budget Tracker',
-    description: 'Monitor lab spending and budget allocations',
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-      </svg>
-    ),
-    active: false,
-    color: 'bg-gray-50 border-gray-200',
-    iconColor: 'text-gray-400',
-  },
-  {
     toolId: 'protocol-generator',
     name: 'Protocol Generator',
     description: 'Create research protocols guided by EQUATOR reporting guidelines',
@@ -55,6 +42,19 @@ const TOOLS = [
     color: 'bg-emerald-50 border-emerald-200 hover:border-emerald-400 hover:shadow-lg',
     iconColor: 'text-emerald-600',
     openLabel: 'Open Generator',
+  },
+  {
+    toolId: 'lab-meeting-tracker',
+    name: 'Lab Meeting Tracker',
+    description: 'Schedule and track lab meeting presentations',
+    icon: (
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+    active: false,
+    color: 'bg-gray-50 border-gray-200',
+    iconColor: 'text-gray-400',
   },
 ]
 
