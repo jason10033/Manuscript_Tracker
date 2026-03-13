@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { getDb } = require('./db');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,80 +9,68 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Log every request for debugging
-app.use((req, res, next) => {
-  console.log(`[REQ] ${req.method} ${req.path}`);
-  next();
+// Track boot status
+let bootStatus = 'starting';
+let bootError = null;
+
+// Health check — registered FIRST, always works even if DB fails
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: bootStatus,
+    error: bootError,
+    time: new Date().toISOString(),
+    version: '3.0',
+    node: process.version,
+    env: process.env.NODE_ENV || 'development',
+  });
 });
 
-async function start() {
-  console.log('[BOOT] Initializing database...');
-  await getDb();
-  console.log('[BOOT] Database initialized successfully');
+// Start the server immediately so Render sees it as alive
+const server = app.listen(PORT, () => {
+  console.log(`[BOOT] Server listening on port ${PORT}`);
+  initApp();
+});
 
+async function initApp() {
   try {
-    console.log('[BOOT] Loading auth routes...');
+    console.log('[BOOT] Initializing database...');
+    const { getDb } = require('./db');
+    await getDb();
+    console.log('[BOOT] Database initialized successfully');
+    bootStatus = 'db_ready';
+
+    console.log('[BOOT] Loading routes...');
     const authRoutes = require('./routes/auth');
-    app.use('/api/auth', authRoutes);
-    console.log('[BOOT] Auth routes loaded');
-
-    console.log('[BOOT] Loading manuscript routes...');
     const manuscriptRoutes = require('./routes/manuscripts');
-    app.use('/api/manuscripts', manuscriptRoutes);
-    console.log('[BOOT] Manuscript routes loaded');
-
-    console.log('[BOOT] Loading admin routes...');
     const adminRoutes = require('./routes/admin');
+
+    app.use('/api/auth', authRoutes);
+    app.use('/api/manuscripts', manuscriptRoutes);
     app.use('/api/admin', adminRoutes);
-    console.log('[BOOT] Admin routes loaded');
-  } catch (err) {
-    console.error('[BOOT] FAILED to load routes:', err);
-  }
+    console.log('[BOOT] All routes loaded');
+    bootStatus = 'routes_ready';
 
-  // Health check endpoint
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString(), version: '2.0' });
-  });
-  console.log('[BOOT] Health check registered');
+    if (process.env.NODE_ENV === 'production') {
+      const distPath = path.join(__dirname, '..', 'client', 'dist');
+      const indexPath = path.join(distPath, 'index.html');
+      console.log(`[BOOT] Static path: ${distPath}`);
+      console.log(`[BOOT] index.html exists: ${fs.existsSync(indexPath)}`);
 
-  // Log all registered routes
-  console.log('[BOOT] Registered routes:');
-  app._router.stack.forEach((layer) => {
-    if (layer.route) {
-      console.log(`  ${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`);
-    } else if (layer.name === 'router') {
-      const prefix = layer.regexp.source
-        .replace('\\/?', '')
-        .replace('(?=\\/|$)', '')
-        .replace(/\\\//g, '/')
-        .replace('^', '')
-        .replace(/\(\?:.*?\)/g, '');
-      console.log(`  ROUTER mounted at pattern: ${layer.regexp}`);
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        if (req.path.startsWith('/api/')) {
+          return res.status(404).json({ error: 'Not found' });
+        }
+        res.sendFile(indexPath);
+      });
+      console.log('[BOOT] Static serving configured');
     }
-  });
 
-  if (process.env.NODE_ENV === 'production') {
-    const distPath = path.join(__dirname, '..', 'client', 'dist');
-    const indexPath = path.join(distPath, 'index.html');
-    console.log(`[BOOT] Production mode — static path: ${distPath}`);
-    console.log(`[BOOT] index.html exists: ${require('fs').existsSync(indexPath)}`);
-
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      // Don't serve index.html for API routes — return 404 instead
-      if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      res.sendFile(indexPath);
-    });
+    bootStatus = 'ready';
+    console.log('[BOOT] Server fully initialized');
+  } catch (err) {
+    bootStatus = 'error';
+    bootError = err.message;
+    console.error('[BOOT] Initialization failed:', err);
   }
-
-  app.listen(PORT, () => {
-    console.log(`[BOOT] Server running on http://localhost:${PORT}`);
-  });
 }
-
-start().catch(err => {
-  console.error('[BOOT] Failed to start server:', err);
-  process.exit(1);
-});
